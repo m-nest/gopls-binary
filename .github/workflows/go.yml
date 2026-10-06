@@ -1,16 +1,19 @@
-name: Go
+name: Build and release gopls
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
 
 jobs:
   build:
     name: Build and release
     runs-on: windows-latest
+
+    permissions:
+      contents: write
+
     env:
       GOPLS_VERSION: v0.23.0
+
     steps:
       - name: Set up Go 1.x
         uses: actions/setup-go@v6
@@ -18,21 +21,28 @@ jobs:
           go-version: ^1.27.1
 
       - name: Build
+        shell: pwsh
         run: |
           go install -v golang.org/x/tools/gopls@$env:GOPLS_VERSION
+
           $dir = Get-Location
+
           cd $env:USERPROFILE\go\bin
-          &"c:\Program Files\7-Zip\7z.exe" a $dir\gopls-$env:GOPLS_VERSION.7z gopls.exe
+          & "C:\Program Files\7-Zip\7z.exe" a "$dir\gopls-$env:GOPLS_VERSION.7z" gopls.exe
 
           cd $dir
-          $hash = (Get-FileHash -Algorithm SHA256 gopls-$env:GOPLS_VERSION.7z).Hash
-          "$hash  gopls-$env:GOPLS_VERSION.7z" | Out-File -Encoding ascii -File sha256sum.txt
+
+          $hash = (Get-FileHash -Algorithm SHA256 "gopls-$env:GOPLS_VERSION.7z").Hash
+          "$hash  gopls-$env:GOPLS_VERSION.7z" |
+            Out-File -Encoding ascii sha256sum.txt
 
       - name: Create and Upload Release
-        id: upload-release
         uses: ncipollo/release-action@v1
         with:
+          tag: ${{ env.GOPLS_VERSION }}
+          commit: ${{ github.sha }}
           body: |
             gopls ${{ env.GOPLS_VERSION }} binary for Windows 64-bit.
           artifacts: "gopls-${{ env.GOPLS_VERSION }}.7z,sha256sum.txt"
           token: ${{ secrets.GITHUB_TOKEN }}
+

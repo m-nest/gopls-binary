@@ -1,7 +1,9 @@
 name: Go
 
-on: 
-  workflow_dispatch:
+on:
+  push:
+    tags:
+      - 'v*'
 
 jobs:
   build:
